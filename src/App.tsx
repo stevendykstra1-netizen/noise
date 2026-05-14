@@ -13,6 +13,7 @@ import {
   useLandHourly,
   useAfd,
 } from './hooks/useNoaa'
+import { useBuoyObservation } from './hooks/useNdbc'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +34,7 @@ function MarineApp() {
   const forecast = useLandForecast()
   const hourly = useLandHourly()
   const afd = useAfd()
+  const buoy = useBuoyObservation()
 
   const isRefreshing =
     alerts.isFetching ||
@@ -60,11 +62,13 @@ function MarineApp() {
           loading={alerts.isLoading}
         />
 
-        {/* 2. Current conditions — buoy wired in Step 3 */}
+        {/* 2. Current conditions */}
         <CurrentConditionsCard
-          observation={null}
-          loading={false}
-          error={false}
+          observation={buoy.observation}
+          loading={buoy.loading}
+          error={buoy.allFailed}
+          usingFallback={buoy.usingFallback}
+          onRetry={buoy.refetch}
         />
 
         {/* 3. Marine zone forecast */}
@@ -98,8 +102,8 @@ function MarineApp() {
           onRetry={() => qc.invalidateQueries({ queryKey: ['noaa', 'afd'] })}
         />
 
-        {/* 6. Water temp — buoy number wired in Step 3 */}
-        <WaterTempCard buoyWaterTempF={null} />
+        {/* 6. Water temp */}
+        <WaterTempCard buoyWaterTempF={buoy.observation?.waterTempF ?? null} />
 
         {/* Footer */}
         <FooterBar onRefresh={handleRefresh} isRefreshing={isRefreshing} />

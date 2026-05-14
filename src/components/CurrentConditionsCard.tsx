@@ -20,6 +20,7 @@ interface CurrentConditionsCardProps {
   loading?: boolean
   error?: boolean
   stale?: boolean
+  usingFallback?: boolean
   onRetry?: () => void
 }
 
@@ -49,6 +50,7 @@ export function CurrentConditionsCard({
   loading,
   error,
   stale,
+  usingFallback,
   onRetry,
 }: CurrentConditionsCardProps) {
   return (
@@ -63,6 +65,11 @@ export function CurrentConditionsCard({
           ) : undefined
         }
       />
+      {usingFallback && (
+        <p className="text-xs text-amber-500 mb-2">
+          ⚠ Primary buoy offline — using fallback station
+        </p>
+      )}
 
       {loading && (
         <div className="space-y-3 animate-pulse">
