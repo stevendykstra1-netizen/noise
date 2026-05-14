@@ -20,7 +20,7 @@ export const BUOY_STATIONS = [
 
 export type BuoyStationId = (typeof BUOY_STATIONS)[number]['id']
 
-export const NDBC_PROXY = (stationId: string) => `/ndbc/${stationId}.txt`
+export const NDBC_PROXY = (stationId: string) => `/ndbc/${stationId.toLowerCase()}.txt`
 
 export const GLERL_WATER_TEMP_IMG =
   'https://coastwatch.glerl.noaa.gov/glsea/glsea.gif'
