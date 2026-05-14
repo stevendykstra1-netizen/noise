@@ -48,7 +48,7 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: /^\/ndbc\/.*/i,
+            urlPattern: /\/ndbc\//i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'ndbc-cache',
