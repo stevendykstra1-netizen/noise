@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   fetchPoints,
-  fetchMarineZoneForecast,
+  fetchLatestProduct,
+  parseNshZoneSection,
   fetchAlerts,
   fetchForecast,
   fetchHourly,
@@ -31,12 +32,17 @@ export function usePoints() {
 export function useMarineZoneForecast() {
   return useQuery({
     queryKey: ['noaa', 'marineZone', MARINE_ZONE],
-    queryFn: () => fetchMarineZoneForecast(MARINE_ZONE),
+    queryFn: async () => {
+      // The api.weather.gov REST endpoint returns 404 for marine zones.
+      // Use the NSH (Nearshore Marine Forecast) text product instead and
+      // extract the LMZ741 section.
+      const product = await fetchLatestProduct('NSH', 'LOT')
+      return {
+        periods: parseNshZoneSection(product.productText, MARINE_ZONE) as MarinePeriod[],
+        updatedAt: new Date(product.issuanceTime),
+      }
+    },
     staleTime: 30 * 60 * 1000,
-    select: (data) => ({
-      periods: data.properties.periods as MarinePeriod[],
-      updatedAt: new Date(data.properties.updated),
-    }),
   })
 }
 
