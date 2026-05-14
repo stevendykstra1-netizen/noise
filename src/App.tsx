@@ -1,11 +1,18 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { AlertsBanner } from './components/AlertsBanner'
-import { CurrentConditionsCard, type BuoyObservation } from './components/CurrentConditionsCard'
-import { MarineZoneForecastCard, type MarinePeriod } from './components/MarineZoneForecastCard'
-import { LandForecastCard, type ForecastPeriod, type HourlyPeriod } from './components/LandForecastCard'
+import { CurrentConditionsCard } from './components/CurrentConditionsCard'
+import { MarineZoneForecastCard } from './components/MarineZoneForecastCard'
+import { LandForecastCard } from './components/LandForecastCard'
 import { ForecastDiscussionCard } from './components/ForecastDiscussionCard'
 import { WaterTempCard } from './components/WaterTempCard'
 import { FooterBar } from './components/FooterBar'
+import {
+  useAlerts,
+  useMarineZoneForecast,
+  useLandForecast,
+  useLandHourly,
+  useAfd,
+} from './hooks/useNoaa'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,111 +25,21 @@ const queryClient = new QueryClient({
   },
 })
 
-// ── Placeholder data for Step 1 ───────────────────────────────────────────────
-
-const PLACEHOLDER_OBS: BuoyObservation = {
-  stationId: 'CHII2',
-  stationLabel: 'Chicago Crib',
-  windDirDeg: 225,
-  windDirCardinal: 'SW',
-  windSpeedKt: 12,
-  windGustKt: 17,
-  waveHeightFt: 2.3,
-  wavePeriodSec: 5,
-  waterTempF: 58,
-  airTempF: 64,
-  observedAt: new Date(Date.now() - 18 * 60000),
-}
-
-const PLACEHOLDER_MARINE: MarinePeriod[] = [
-  {
-    name: 'Today',
-    detailedForecast:
-      'South winds 10 to 15 kt, becoming southwest 15 to 20 kt this afternoon. Waves 2 to 3 ft. Slight chance of showers.',
-  },
-  {
-    name: 'Tonight',
-    detailedForecast:
-      'Southwest winds 15 to 20 kt. Waves 3 to 4 ft. Chance of thunderstorms. Small craft should exercise caution.',
-  },
-  {
-    name: 'Friday',
-    detailedForecast:
-      'North winds 10 to 15 kt. Waves 2 to 3 ft, subsiding to 1 to 2 ft in the afternoon.',
-  },
-]
-
-const PLACEHOLDER_PERIODS: ForecastPeriod[] = [
-  {
-    name: 'Today',
-    temperature: 67,
-    temperatureUnit: 'F',
-    windSpeed: '10 to 15 mph',
-    windDirection: 'SW',
-    shortForecast: 'Partly Cloudy',
-    detailedForecast: 'Partly cloudy with a slight chance of showers.',
-    isDaytime: true,
-  },
-  {
-    name: 'Tonight',
-    temperature: 54,
-    temperatureUnit: 'F',
-    windSpeed: '15 to 20 mph',
-    windDirection: 'W',
-    shortForecast: 'Chance Thunderstorms',
-    detailedForecast: 'Chance of thunderstorms after midnight.',
-    isDaytime: false,
-  },
-  {
-    name: 'Friday',
-    temperature: 62,
-    temperatureUnit: 'F',
-    windSpeed: '10 mph',
-    windDirection: 'N',
-    shortForecast: 'Mostly Sunny',
-    detailedForecast: 'Mostly sunny and pleasant.',
-    isDaytime: true,
-  },
-  {
-    name: 'Friday Night',
-    temperature: 51,
-    temperatureUnit: 'F',
-    windSpeed: '5 mph',
-    windDirection: 'N',
-    shortForecast: 'Clear',
-    detailedForecast: 'Clear and calm.',
-    isDaytime: false,
-  },
-  {
-    name: 'Saturday',
-    temperature: 70,
-    temperatureUnit: 'F',
-    windSpeed: '5 to 10 mph',
-    windDirection: 'S',
-    shortForecast: 'Sunny',
-    detailedForecast: 'Sunny and warm. Great boating day.',
-    isDaytime: true,
-  },
-]
-
-const PLACEHOLDER_HOURLY: HourlyPeriod[] = Array.from({ length: 12 }, (_, i) => {
-  const d = new Date()
-  d.setMinutes(0, 0, 0)
-  d.setHours(d.getHours() + i + 1)
-  return {
-    startTime: d.toISOString(),
-    temperature: 62 + Math.round(Math.sin(i / 3) * 6),
-    temperatureUnit: 'F',
-    windSpeed: '12 mph',
-    probabilityOfPrecipitation: { value: i < 4 ? 20 : 0 },
-    shortForecast: 'Partly Cloudy',
-  }
-})
-
-// ──────────────────────────────────────────────────────────────────────────────
-
 function MarineApp() {
   const qc = useQueryClient()
+
+  const alerts = useAlerts()
+  const marine = useMarineZoneForecast()
+  const forecast = useLandForecast()
+  const hourly = useLandHourly()
+  const afd = useAfd()
+
+  const isRefreshing =
+    alerts.isFetching ||
+    marine.isFetching ||
+    forecast.isFetching ||
+    hourly.isFetching ||
+    afd.isFetching
 
   function handleRefresh() {
     qc.invalidateQueries()
@@ -138,35 +55,54 @@ function MarineApp() {
         </header>
 
         {/* 1. Alerts */}
-        <AlertsBanner alerts={[]} />
+        <AlertsBanner
+          alerts={alerts.data ?? []}
+          loading={alerts.isLoading}
+        />
 
-        {/* 2. Current conditions */}
-        <CurrentConditionsCard observation={PLACEHOLDER_OBS} />
+        {/* 2. Current conditions — buoy wired in Step 3 */}
+        <CurrentConditionsCard
+          observation={null}
+          loading={false}
+          error={false}
+        />
 
         {/* 3. Marine zone forecast */}
         <MarineZoneForecastCard
-          periods={PLACEHOLDER_MARINE}
-          updatedAt={new Date(Date.now() - 45 * 60000)}
+          periods={marine.data?.periods ?? []}
+          updatedAt={marine.data?.updatedAt ?? null}
+          loading={marine.isLoading}
+          error={marine.isError}
+          stale={marine.isError && !!marine.data}
+          onRetry={() => qc.invalidateQueries({ queryKey: ['noaa', 'marineZone'] })}
         />
 
         {/* 4. Land forecast */}
         <LandForecastCard
-          periods={PLACEHOLDER_PERIODS}
-          hourly={PLACEHOLDER_HOURLY}
-          updatedAt={new Date(Date.now() - 30 * 60000)}
+          periods={forecast.data?.periods ?? []}
+          hourly={hourly.data ?? []}
+          updatedAt={forecast.data?.updatedAt ?? null}
+          loading={forecast.isLoading}
+          error={forecast.isError}
+          stale={forecast.isError && !!forecast.data}
+          onRetry={() => qc.invalidateQueries({ queryKey: ['noaa', 'forecast'] })}
         />
 
         {/* 5. Forecast discussion */}
         <ForecastDiscussionCard
-          text="...AREA FORECAST DISCUSSION...\n\nThis is placeholder AFD text. Wire up the real NOAA AFD endpoint in Step 4 to see the actual NWS meteorologist's reasoning here.\n\n.SHORT TERM...\nSouthwest flow aloft will keep lake breezes suppressed through the afternoon. A cold front approaches tonight bringing thunderstorm risk. Main concern is wind gusts 25-35kt ahead of the front passage.\n\n.MARINE...\nSmall craft exercise caution tonight through Friday morning as seas build to 4-5ft ahead of frontal passage."
-          issuedAt={new Date(Date.now() - 3 * 3600000)}
+          text={afd.data?.text ?? null}
+          issuedAt={afd.data?.issuedAt ?? null}
+          loading={afd.isLoading}
+          error={afd.isError}
+          stale={afd.isError && !!afd.data}
+          onRetry={() => qc.invalidateQueries({ queryKey: ['noaa', 'afd'] })}
         />
 
-        {/* 6. Water temp */}
-        <WaterTempCard buoyWaterTempF={PLACEHOLDER_OBS.waterTempF} />
+        {/* 6. Water temp — buoy number wired in Step 3 */}
+        <WaterTempCard buoyWaterTempF={null} />
 
         {/* Footer */}
-        <FooterBar onRefresh={handleRefresh} />
+        <FooterBar onRefresh={handleRefresh} isRefreshing={isRefreshing} />
       </div>
     </div>
   )
